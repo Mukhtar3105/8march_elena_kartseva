@@ -170,12 +170,9 @@
       width:100%;
       height:100%;
       object-fit: cover;
-
-      /* FIX: лицо в круге */
       object-position: 50% 22%;
       transform: scale(1.06);
       transform-origin: center top;
-
       display:block;
     }
 
@@ -237,6 +234,9 @@
       font-family:"Cinzel", serif;
     }
 
+    /* =========================
+       ГАЛЕРЕЯ — ИСПРАВЛЕНО
+       ========================= */
     .gallery{
       margin-top: 14px;
       border-radius: 22px;
@@ -245,23 +245,34 @@
       background: rgba(255,255,255,.14);
       box-shadow: 0 16px 40px rgba(0,0,0,.08);
     }
+
+    /* Больше и выше, под портреты */
     .g-stage{
       position:relative;
-      aspect-ratio: 4 / 5;
       width:100%;
+      aspect-ratio: 9 / 16;     /* портретный формат */
+      max-height: 78vh;         /* чтобы на телефоне не вылазило */
       overflow:hidden;
-      background: rgba(255,255,255,.10);
+
+      /* мягкий фон под пустые поля при object-fit: contain */
+      background:
+        radial-gradient(900px 700px at 50% 20%, rgba(198,161,168,.18), rgba(255,255,255,0) 60%),
+        rgba(255,255,255,.10);
     }
+
+    /* Фото НЕ режется, помещается целиком */
     .g-stage img{
       position:absolute;
       inset:0;
       width:100%;
       height:100%;
-      object-fit: cover;
+      object-fit: contain;      /* ключевое изменение */
+      object-position: center;  /* центрируем */
       opacity:0;
       transition: opacity .35s ease;
     }
     .g-stage img.active{ opacity:1; }
+
     .g-controls{
       display:flex;
       justify-content:space-between;
