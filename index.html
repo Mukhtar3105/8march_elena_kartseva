@@ -455,7 +455,6 @@
           <div class="script hero-title">С 8 Марта</div>
 
           <div class="hero-img">
-            <!-- фото / схема -->
             <img src="./main_photo.png?v=2" alt="Карцева Елена Сергеевна">
           </div>
 
@@ -680,192 +679,220 @@
   </div>
 
   <script>
-    // Smooth anchor scroll
-    document.querySelectorAll('a[href^="#"]').forEach(a=>{
-      a.addEventListener('click', (e)=>{
-        const id = a.getAttribute('href');
-        const el = document.querySelector(id);
-        if(!el) return;
-        e.preventDefault();
-        el.scrollIntoView({behavior:'smooth', block:'start'});
-      });
-    });
+    document.addEventListener('DOMContentLoaded', () => {
 
-    // Reveal cards on scroll
-    (function revealCards(){
-      const cards = Array.from(document.querySelectorAll('.card'));
-      const io = new IntersectionObserver((entries)=>{
-        entries.forEach(en=>{
-          if(en.isIntersecting){
-            en.target.classList.add('revealed');
-            io.unobserve(en.target);
+      // Smooth anchor scroll
+      document.querySelectorAll('a[href^="#"]').forEach(a=>{
+        a.addEventListener('click', (e)=>{
+          const id = a.getAttribute('href');
+          const el = document.querySelector(id);
+          if(!el) return;
+          e.preventDefault();
+          el.scrollIntoView({behavior:'smooth', block:'start'});
+        });
+      });
+
+      // Reveal cards on scroll (with fallback)
+      (function revealCards(){
+        const cards = Array.from(document.querySelectorAll('.card'));
+        if(!cards.length) return;
+
+        if(!('IntersectionObserver' in window)){
+          cards.forEach(c=>c.classList.add('revealed'));
+          return;
+        }
+
+        const io = new IntersectionObserver((entries)=>{
+          entries.forEach(en=>{
+            if(en.isIntersecting){
+              en.target.classList.add('revealed');
+              io.unobserve(en.target);
+            }
+          });
+        }, { threshold: 0.14 });
+
+        cards.forEach(c=>io.observe(c));
+        cards[0].classList.add('revealed');
+      })();
+
+      // Show "to top" button after some scroll
+      (function toTop(){
+        const btn = document.getElementById('toTop');
+        if(!btn) return;
+        window.addEventListener('scroll', ()=>{
+          if(window.scrollY > 520) btn.classList.add('show');
+          else btn.classList.remove('show');
+        }, {passive:true});
+      })();
+
+      // Gallery slider
+      (function gallery(){
+        const stage = document.getElementById('gStage');
+        const dotsWrap = document.getElementById('gDots');
+        const prev = document.getElementById('gPrev');
+        const next = document.getElementById('gNext');
+        if(!stage || !dotsWrap || !prev || !next) return;
+
+        const imgs = Array.from(stage.querySelectorAll('img'));
+        if(!imgs.length) return;
+
+        let i = 0;
+
+        function buildDots(){
+          dotsWrap.innerHTML = '';
+          imgs.forEach((_, idx)=>{
+            const d = document.createElement('div');
+            d.className = 'dot' + (idx===i ? ' on' : '');
+            d.addEventListener('click', ()=>{ i = idx; render(); });
+            dotsWrap.appendChild(d);
+          });
+        }
+        function render(){
+          imgs.forEach((img, idx)=> img.classList.toggle('active', idx===i));
+          Array.from(dotsWrap.children).forEach((d, idx)=> d.classList.toggle('on', idx===i));
+        }
+
+        prev.addEventListener('click', ()=>{
+          i = (i - 1 + imgs.length) % imgs.length;
+          render();
+        });
+        next.addEventListener('click', ()=>{
+          i = (i + 1) % imgs.length;
+          render();
+        });
+
+        // swipe for mobile
+        let x0 = null;
+        stage.addEventListener('touchstart', e=>{ x0 = e.touches[0].clientX; }, {passive:true});
+        stage.addEventListener('touchend', e=>{
+          if(x0===null) return;
+          const x1 = e.changedTouches[0].clientX;
+          const dx = x1 - x0;
+          if(Math.abs(dx) > 35){
+            if(dx < 0) next.click(); else prev.click();
+          }
+          x0 = null;
+        }, {passive:true});
+
+        buildDots();
+        render();
+      })();
+
+      // Birthday countdown (every year) — 09 Jun
+      const pad2 = n => String(n).padStart(2,'0');
+
+      function nextBirthday(monthIndex, day){
+        const now = new Date();
+        const y = now.getFullYear();
+        let t = new Date(y, monthIndex, day, 0, 0, 0, 0);
+        if(t <= now) t = new Date(y + 1, monthIndex, day, 0, 0, 0, 0);
+        return t;
+      }
+
+      function tickBirthday(){
+        const elDays = document.getElementById('bDays');
+        const elHours = document.getElementById('bHours');
+        const elMins = document.getElementById('bMins');
+        const elSecs = document.getElementById('bSecs');
+        if(!elDays || !elHours || !elMins || !elSecs) return;
+
+        const target = nextBirthday(5, 9); // Jun=5, day=9
+        const now = new Date();
+        let diff = target - now;
+        if(diff < 0) diff = 0;
+
+        const sec = Math.floor(diff / 1000);
+        const days = Math.floor(sec / 86400);
+        const hours = Math.floor((sec % 86400) / 3600);
+        const mins = Math.floor((sec % 3600) / 60);
+        const secs = sec % 60;
+
+        elDays.textContent  = pad2(days);
+        elHours.textContent = pad2(hours);
+        elMins.textContent  = pad2(mins);
+        elSecs.textContent  = pad2(secs);
+      }
+
+      tickBirthday();
+      setInterval(tickBirthday, 1000);
+
+      // Share / Copy link / Print
+      (function actions(){
+        const btnShare = document.getElementById('btnShare');
+        const btnPrint = document.getElementById('btnPrint');
+        const hint = document.getElementById('shareHint');
+
+        function toast(){
+          if(!hint) return;
+          hint.style.display = 'block';
+          clearTimeout(window.__t);
+          window.__t = setTimeout(()=> hint.style.display = 'none', 1600);
+        }
+
+        async function copyLink(){
+          try{
+            await navigator.clipboard.writeText(location.href);
+            toast();
+          }catch(e){
+            const ta = document.createElement('textarea');
+            ta.value = location.href;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            toast();
+          }
+        }
+
+        if(btnShare){
+          btnShare.addEventListener('click', async ()=>{
+            const data = { title: document.title, text: 'Поздравление с 8 Марта', url: location.href };
+            if(navigator.share){
+              try{ await navigator.share(data); } catch(e){}
+            }else{
+              await copyLink();
+            }
+          });
+        }
+
+        if(btnPrint){
+          btnPrint.addEventListener('click', ()=> window.print());
+        }
+      })();
+
+      // Download all images
+      (function downloadAll(){
+        const btn = document.getElementById('btnDownloadAll');
+        if(!btn) return;
+
+        const files = [
+          './GEN_Wing_positive(filled)_RGB_low%20(1).png',
+          './main_photo.png',
+          './1_photo.png',
+          './2_photo.png',
+          './3_photo.png',
+          './4_photo.png',
+          './5_photo.png'
+        ];
+
+        function triggerDownload(url){
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = decodeURIComponent(url.split('/').pop());
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        }
+
+        btn.addEventListener('click', async ()=>{
+          for(let i=0; i<files.length; i++){
+            triggerDownload(files[i]);
+            await new Promise(r => setTimeout(r, 250));
           }
         });
-      }, { threshold: 0.14 });
-      cards.forEach(c=>io.observe(c));
-      if(cards[0]) cards[0].classList.add('revealed');
-    })();
+      })();
 
-    // Show "to top" button after some scroll
-    (function toTop(){
-      const btn = document.getElementById('toTop');
-      window.addEventListener('scroll', ()=>{
-        if(window.scrollY > 520) btn.classList.add('show');
-        else btn.classList.remove('show');
-      }, {passive:true});
-    })();
-
-    // Gallery slider
-    (function gallery(){
-      const stage = document.getElementById('gStage');
-      const imgs = Array.from(stage.querySelectorAll('img'));
-      const dotsWrap = document.getElementById('gDots');
-      const prev = document.getElementById('gPrev');
-      const next = document.getElementById('gNext');
-      let i = 0;
-
-      function buildDots(){
-        dotsWrap.innerHTML = '';
-        imgs.forEach((_, idx)=>{
-          const d = document.createElement('div');
-          d.className = 'dot' + (idx===i ? ' on' : '');
-          d.addEventListener('click', ()=>{ i = idx; render(); });
-          dotsWrap.appendChild(d);
-        });
-      }
-      function render(){
-        imgs.forEach((img, idx)=> img.classList.toggle('active', idx===i));
-        Array.from(dotsWrap.children).forEach((d, idx)=> d.classList.toggle('on', idx===i));
-      }
-
-      prev.addEventListener('click', ()=>{
-        i = (i - 1 + imgs.length) % imgs.length;
-        render();
-      });
-      next.addEventListener('click', ()=>{
-        i = (i + 1) % imgs.length;
-        render();
-      });
-
-      // swipe for mobile
-      let x0 = null;
-      stage.addEventListener('touchstart', e=>{ x0 = e.touches[0].clientX; }, {passive:true});
-      stage.addEventListener('touchend', e=>{
-        if(x0===null) return;
-        const x1 = e.changedTouches[0].clientX;
-        const dx = x1 - x0;
-        if(Math.abs(dx) > 35){
-          if(dx < 0) next.click(); else prev.click();
-        }
-        x0 = null;
-      }, {passive:true});
-
-      buildDots();
-      render();
-    })();
-
-    // Birthday countdown (every year) — 09 Jun
-    const pad2 = n => String(n).padStart(2,'0');
-
-    function nextBirthday(monthIndex, day){
-      const now = new Date();
-      const y = now.getFullYear();
-      let t = new Date(y, monthIndex, day, 0, 0, 0, 0);
-      if(t <= now) t = new Date(y + 1, monthIndex, day, 0, 0, 0, 0);
-      return t;
-    }
-
-    function tickBirthday(){
-      const target = nextBirthday(5, 9); // Jun=5, day=9
-      const now = new Date();
-      let diff = target - now;
-      if(diff < 0) diff = 0;
-
-      const sec = Math.floor(diff / 1000);
-      const days = Math.floor(sec / 86400);
-      const hours = Math.floor((sec % 86400) / 3600);
-      const mins = Math.floor((sec % 3600) / 60);
-      const secs = sec % 60;
-
-      document.getElementById('bDays').textContent  = pad2(days);
-      document.getElementById('bHours').textContent = pad2(hours);
-      document.getElementById('bMins').textContent  = pad2(mins);
-      document.getElementById('bSecs').textContent  = pad2(secs);
-    }
-
-    tickBirthday();
-    setInterval(tickBirthday, 1000);
-
-    // Share / Copy link / Print
-    (function actions(){
-      const btnShare = document.getElementById('btnShare');
-      const btnPrint = document.getElementById('btnPrint');
-      const hint = document.getElementById('shareHint');
-
-      function toast(){
-        hint.style.display = 'block';
-        clearTimeout(window.__t);
-        window.__t = setTimeout(()=> hint.style.display = 'none', 1600);
-      }
-
-      async function copyLink(){
-        try{
-          await navigator.clipboard.writeText(location.href);
-          toast();
-        }catch(e){
-          const ta = document.createElement('textarea');
-          ta.value = location.href;
-          document.body.appendChild(ta);
-          ta.select();
-          document.execCommand('copy');
-          document.body.removeChild(ta);
-          toast();
-        }
-      }
-
-      btnShare.addEventListener('click', async ()=>{
-        const data = { title: document.title, text: 'Поздравление с 8 Марта', url: location.href };
-        if(navigator.share){
-          try{ await navigator.share(data); } catch(e){}
-        }else{
-          await copyLink();
-        }
-      });
-
-      btnPrint.addEventListener('click', ()=> window.print());
-    })();
-
-    // Download all images
-    (function downloadAll(){
-      const btn = document.getElementById('btnDownloadAll');
-      if(!btn) return;
-
-      const files = [
-        './GEN_Wing_positive(filled)_RGB_low%20(1).png',
-        './main_photo.png',
-        './1_photo.png',
-        './2_photo.png',
-        './3_photo.png',
-        './4_photo.png',
-        './5_photo.png'
-      ];
-
-      function triggerDownload(url){
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = decodeURIComponent(url.split('/').pop());
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      }
-
-      btn.addEventListener('click', async ()=>{
-        for(let i=0; i<files.length; i++){
-          triggerDownload(files[i]);
-          await new Promise(r => setTimeout(r, 250));
-        }
-      });
-    })();
+    });
   </script>
 </body>
 </html>
